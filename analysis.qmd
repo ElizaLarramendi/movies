@@ -29,3 +29,74 @@ ggplot(movies, aes(x = tomatoMeter)) +
     y = "Count"
   )
 ```
+
+```{r}
+movies_gap <- movies_clean |>
+  filter(tomatoMeter != 0, audienceScore != 0) |>
+  mutate(gap = tomatoMeter - audienceScore)
+
+movies_summary <- movies_gap |>
+  group_by(genre) |>
+  summarise(
+    mean_gap = mean(gap, na.rm = TRUE),
+    n_rows = n(),
+    .groups = "drop"
+  ) |>
+  filter(n_rows >= 100) |>
+  arrange(mean_gap)
+
+movies_summary
+```
+
+```{r}
+ggplot(movies_summary, aes(x = mean_gap, y = reorder(genre, mean_gap))) +
+  geom_col() +
+  geom_vline(xintercept = 0) +
+  labs(
+    title = "Average Gap Between Critics and Audiences by Genre",
+    subtitle = "Genres ordered from most audience-favored to most critic-favored",
+    x = "Mean gap (Tomatometer − Audience Score)",
+    y = "Genre"
+  )
+```
+
+```{r}
+spiderman <- movies |>
+  filter(title %in% c(
+    "Spider-Man",
+    "Spider-Man 2",
+    "Spider-Man 3",
+    "The Amazing Spider-Man",
+    "The Amazing Spider-Man 2",
+    "Spider-Man: Homecoming",
+    "Spider-Man: Far From Home",
+    "Spider-Man: No Way Home"
+  )) |>
+  mutate(actor = case_when(
+    title %in% c("Spider-Man", "Spider-Man 2", "Spider-Man 3") ~ "Tobey Maguire",
+    str_detect(title, "The Amazing Spider-Man") ~ "Andrew Garfield",
+    str_detect(title, ":") ~ "Tom Holland"
+  )) |>
+  arrange(releaseDateTheaters)
+
+spiderman |>
+  pivot_longer(
+    cols = c(tomatoMeter, audienceScore),
+    names_to = "score_type",
+    values_to = "score"
+  ) |>
+  mutate(
+    score_type = recode(score_type, tomatoMeter = "Tomatometer", audienceScore = "Audience Score"),
+    title = factor(title, levels = spiderman$title)
+  ) |>
+  ggplot(aes(x = title, y = score, color = score_type, group = score_type)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Audience Scores Surpassed Critic Scores in Several Later Spider-Man Films",
+    x = "Film (release order)",
+    y = "Score",
+    color = "Score type"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
